@@ -10,6 +10,8 @@ namespace ClassroomCalendarSync
     {
         static void Main(string[] args)
         {
+            var sync = new SyncApplication();
+            sync.Run();
         }
     }
 }
