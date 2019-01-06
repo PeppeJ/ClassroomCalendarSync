@@ -16,7 +16,7 @@ namespace ClassroomCalendarSync
     class SyncApplication
     {
         static string ApplicationName = "Classroom Calendar Sync";
-        static string[] Scopes = { ClassroomService.Scope.ClassroomCoursesReadonly, CalendarService.Scope.CalendarReadonly };
+        static string[] Scopes = { ClassroomService.Scope.ClassroomCoursesReadonly, CalendarService.Scope.Calendar, CalendarService.Scope.CalendarSettingsReadonly };
 
         public UserCredentialManager UserCredential { get; set; }
         public CalendarManager CalendarManager { get; set; }
@@ -32,14 +32,86 @@ namespace ClassroomCalendarSync
 
         public void Run()
         {
-            CalendarManager.CalendarList.Items.ToList()
-                .Where(x => x.Id.ToLower().Contains("classroom"))
-                .ToList()
-                .ForEach(x => Console.WriteLine(x.Summary));
+            ClassroomManager.Courses.ToList().ForEach(x =>
+            {
+                Console.Write($"{x.Name} - ");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write($"{x.Section}\n");
+                Console.ResetColor();
+            });
 
-            ClassroomManager.Courses.ToList().ForEach(x => Console.WriteLine($"{x.Name} with {x.Section}"));
+            //ValidateCalendarDomainShare();
+            RemovePrefixFromClassroomEvents();
 
             Console.ReadLine();
+        }
+
+        private void RemovePrefixFromClassroomEvents()
+        {
+            var eventsList = CalendarManager.GetEventsFromCalendars(CalendarManager.CalendarList.Items.Where(x => x.Id.Contains("classroom")).Select(x => x.Id));
+            foreach (var events in eventsList)
+            {
+                foreach (var ev in events.Value.Items)
+                {
+                    CalendarManager.RemovePrefix(ev);
+                    var req = CalendarManager.Service.Events.Patch(ev, events.Key, ev.Id);
+                    var res = req.Execute();
+                    ConsoleHelper.Info($"Patched {ev.Summary} in {events.Value.Summary}.");
+                }
+            }
+            ConsoleHelper.Success("Patched all.");
+            ConsoleHelper.Info("########");
+            ConsoleHelper.Info("########");
+            ConsoleHelper.Info("########");
+            ConsoleHelper.Info("########");
+            ConsoleHelper.Info("########");
+            ConsoleHelper.Info("########");
+            ConsoleHelper.Info("########");
+            ConsoleHelper.Info("########");
+            Print(eventsList);
+        }
+
+        private static void Print(IList<KeyValuePair<string, Events>> eventsList)
+        {
+            foreach (var events in eventsList)
+            {
+                Console.WriteLine($"{events.Value.Summary}");
+                foreach (var ev in events.Value.Items)
+                {
+                    if (ev.Status != "cancelled")
+                    {
+                        Console.WriteLine($"\t{ev.Summary} - {ev.Start.Date}");
+                    }
+                }
+            }
+        }
+
+        private void ValidateCalendarDomainShare()
+        {
+            var acls = CalendarManager.GetACLs(ClassroomManager.GetClassromCalendars());
+            var result = CalendarManager.GetMissingDomainACLs(acls);
+
+            if (result.Count > 0)
+            {
+                ConsoleHelper.Error($"Found {result.Count} calendars missing domain rule.");
+                foreach (var item in result)
+                {
+                    ConsoleHelper.Error(item.Key);
+                }
+                var updated = CalendarManager.AddDomainACLRule(result);
+                int i = 0;
+                foreach (var item in updated)
+                {
+                    var req = CalendarManager.Service.Acl.Insert(CalendarManager.NewDomainRule(), item.Key);
+                    var res = req.Execute();
+                    i++;
+                    ConsoleHelper.Info($"Updated calendar {item.Key} - {i} of {updated.Count}");
+                }
+            }
+            else
+            {
+                ConsoleHelper.Success("No calendars missing domain rule.");
+            }
         }
     }
 }

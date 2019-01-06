@@ -20,7 +20,7 @@ namespace ClassroomCalendarSync
         {
             get
             {
-                if (_courses == null) { Courses = GetCourses().ToArray(); }
+                if (_courses == null) { Courses = GetActiveCourses().ToArray(); }
                 return _courses;
             }
             private set { _courses = value; }
@@ -41,10 +41,13 @@ namespace ClassroomCalendarSync
             ConsoleHelper.Info($"Initialized ClassroomService for {Service.ApplicationName}");
         }
 
-        public IList<Course> GetCourses()
+        public IEnumerable<string> GetClassromCalendars() => Courses.Select(x => x.CalendarId);
+
+        public IList<Course> GetActiveCourses()
         {
-            CoursesResource.ListRequest req = Service.Courses.List();
+            var req = Service.Courses.List();
             req.CourseStates = CoursesResource.ListRequest.CourseStatesEnum.ACTIVE;
+            ConsoleHelper.Info("Retrieving active courses");
             return req.Execute().Courses;
         }
     }
