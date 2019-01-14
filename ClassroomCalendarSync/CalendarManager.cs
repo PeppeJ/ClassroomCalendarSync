@@ -71,9 +71,9 @@ namespace ClassroomCalendarSync
 
         public Calendar GetCalendarByID(string id)
         {
-            ConsoleHelper.Info($"Retrieving calendar: {id}");
             var req = Service.Calendars.Get(id);
             var res = req.Execute();
+            ConsoleHelper.Success($"Retrieved calendar: {id}");
             return res;
         }
 
@@ -87,10 +87,12 @@ namespace ClassroomCalendarSync
             return events;
         }
 
-        public Event RemovePrefix(Event target)
+        public bool RemovePrefix(Event target)
         {
+            bool removed = false;
             if (target.Status != "cancelled")
             {
+                Console.WriteLine(target.Summary);
                 string[] filters = { "Assignment: ", "Uppgift: " };
                 foreach (var filter in filters)
                 {
@@ -101,19 +103,20 @@ namespace ClassroomCalendarSync
                     string sub = target.Summary.Substring(0, filter.Length);
                     if (sub == filter)
                     {
+                        removed = true;
                         target.Summary = target.Summary.Remove(0, filter.Length);
                         break;
                     }
                 }
             }
-            return target;
+            return removed;
         }
 
         public Events GetEventsFromCalendar(string id)
         {
-            ConsoleHelper.Info($"Retrieving events: {id}");
             var req = Service.Events.List(id);
             var res = req.Execute();
+            ConsoleHelper.Success($"Retrieved events from: {id}");
             return res;
         }
 
@@ -122,6 +125,7 @@ namespace ClassroomCalendarSync
             ConsoleHelper.Info("Retrieving CalendarList");
             var res = Service.CalendarList.List();
             var req = res.Execute();
+            ConsoleHelper.Success($"Retrieved CalendarList");
             return req;
         }
 

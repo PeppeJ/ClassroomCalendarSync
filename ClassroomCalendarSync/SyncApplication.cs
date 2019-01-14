@@ -16,7 +16,17 @@ namespace ClassroomCalendarSync
     class SyncApplication
     {
         static string ApplicationName = "Classroom Calendar Sync";
-        static string[] Scopes = { ClassroomService.Scope.ClassroomCoursesReadonly, CalendarService.Scope.Calendar, CalendarService.Scope.CalendarSettingsReadonly };
+        static string[] Scopes = {
+            ClassroomService.Scope.ClassroomAnnouncementsReadonly,
+            ClassroomService.Scope.ClassroomCoursesReadonly,
+            ClassroomService.Scope.ClassroomCourseworkStudentsReadonly,
+            ClassroomService.Scope.ClassroomGuardianlinksStudentsReadonly,
+            ClassroomService.Scope.ClassroomStudentSubmissionsMeReadonly,
+            ClassroomService.Scope.ClassroomStudentSubmissionsStudentsReadonly,
+            ClassroomService.Scope.ClassroomProfileEmails,
+            ClassroomService.Scope.ClassroomRostersReadonly,
+            CalendarService.Scope.Calendar,
+            CalendarService.Scope.CalendarSettingsReadonly };
 
         public UserCredentialManager UserCredential { get; set; }
         public CalendarManager CalendarManager { get; set; }
@@ -32,18 +42,31 @@ namespace ClassroomCalendarSync
 
         public void Run()
         {
-            ClassroomManager.Courses.ToList().ForEach(x =>
-            {
-                Console.Write($"{x.Name} - ");
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.Write($"{x.Section}\n");
-                Console.ResetColor();
-            });
+            //ClassroomManager.Courses.ToList().ForEach(x =>
+            //{
+            //    Console.Write($"{x.Name} - ");
+            //    Console.ForegroundColor = ConsoleColor.Cyan;
+            //    Console.Write($"{x.Section}\n");
+            //    Console.ResetColor();
+            //});
 
             //ValidateCalendarDomainShare();
-            RemovePrefixFromClassroomEvents();
+            //RemovePrefixFromClassroomEvents();
+            foreach (var st in ClassroomManager.Students)
+            {
+                Console.WriteLine(st.Value.Profile.EmailAddress);
+                foreach (var course in st.Value.Courses)
+                {
+                    Console.WriteLine($"\t{course}");
+                }
+            }
 
-            Console.ReadLine();
+            while (true)
+            {
+                Console.WriteLine("Search for user email:");
+                string input = Console.ReadLine();
+                ClassroomManager.PrintWorksFrom(input);
+            }
         }
 
         private void RemovePrefixFromClassroomEvents()
@@ -53,23 +76,17 @@ namespace ClassroomCalendarSync
             {
                 foreach (var ev in events.Value.Items)
                 {
-                    CalendarManager.RemovePrefix(ev);
-                    var req = CalendarManager.Service.Events.Patch(ev, events.Key, ev.Id);
-                    var res = req.Execute();
-                    ConsoleHelper.Info($"Patched {ev.Summary} in {events.Value.Summary}.");
+                    if (CalendarManager.RemovePrefix(ev))
+                    {
+                        var req = CalendarManager.Service.Events.Patch(ev, events.Key, ev.Id);
+                        var res = req.Execute();
+                        ConsoleHelper.Info($"Patched {ev.Summary} in {events.Value.Summary}.");
+                    }
                 }
             }
-            ConsoleHelper.Success("Patched all.");
-            ConsoleHelper.Info("########");
-            ConsoleHelper.Info("########");
-            ConsoleHelper.Info("########");
-            ConsoleHelper.Info("########");
-            ConsoleHelper.Info("########");
-            ConsoleHelper.Info("########");
-            ConsoleHelper.Info("########");
-            ConsoleHelper.Info("########");
             Print(eventsList);
         }
+
 
         private static void Print(IList<KeyValuePair<string, Events>> eventsList)
         {
